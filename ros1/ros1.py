@@ -4,6 +4,11 @@ Created on Mon Dec 27 14:52:42 2021
 
 @author: Kert PC
 """
+
+
+# Computing GC Content
+
+
 from Bio import Entrez, SeqIO
 import sys; sys.path.append(".")
 

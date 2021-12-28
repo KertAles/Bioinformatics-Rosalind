@@ -5,6 +5,8 @@ Created on Mon Dec 27 15:07:05 2021
 @author: Kert PC
 """
 
+# Finding the Longest Multiple Repeat
+
 from Bio import Entrez, SeqIO
 import sys; sys.path.append(".")
 from collections import defaultdict
