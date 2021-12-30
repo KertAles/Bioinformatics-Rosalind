@@ -28,44 +28,62 @@ def hamming_distance(seq1, seq2) :
             
     return dist
 
-def global_alignment(seq1, seq2, scoring_function, constant_gap = True):
-    
-    table = defaultdict(int)
-    prev = {}
+def global_alignment(seq1, seq2, scoring_function, open_gap_penalty=-5, extend_gap_penalty=0):
     
     indel_char = '*'
     
     seq1 = indel_char + seq1
     seq2 = indel_char + seq2
     
+    upp_table = defaultdict(int)
+    mid_table = defaultdict(int)
+    low_table = defaultdict(int)
+    prev = {}
+    
+    mid_table[0, 0] = 0
+    mid_table[0, 1] = open_gap_penalty
+    mid_table[1, 0] = open_gap_penalty
+    
+    upp_table[0, 1] = open_gap_penalty
+    low_table[1, 0] = open_gap_penalty
+    
+    prev[0, 1] = (0, 0)
+    prev[1, 0] = (0, 0)
+    
+    for i in range(2, len(seq1)) :
+        mid_table[i, 0] = mid_table[i-1, 0] + extend_gap_penalty
+        low_table[i, 0] = low_table[i-1, 0] + extend_gap_penalty
+        upp_table[i, 0] = -1000000000000
+        prev[i, 0] = (i-1, 0)
+    for j in range(2, len(seq2)):
+        mid_table[0, j] = mid_table[0, j-1] + extend_gap_penalty
+        upp_table[0, j] = upp_table[0, j-1] + extend_gap_penalty
+        low_table[0, j] = -1000000000000
+        prev[0, j] = (0, j-1)
+
+
     for i, si in enumerate(seq1):
         for j, tj in enumerate(seq2):
-            if i > 0 and j > 0: 
-                leftscore = 0
-                upscore = 0
-                
-                if prev[i-1, j] != (i-2, j) :
-                    leftscore = scoring_function(si, indel_char)
-                    
-                if prev[i, j-1] != (i, j-2) :
-                    upscore = scoring_function(indel_char, tj)
-                
-                table[i, j], prev[i, j] = max(
-                (table[i-1, j-1] + scoring_function(si, tj), (i-1, j-1)),
-                (table[i-1, j] + leftscore, (i-1, j)),
-                (table[i, j-1] + upscore, (i, j-1)),
+            if i > 0 and j > 0 :
+                low_table[i, j] = max(
+                    low_table[i-1, j] + extend_gap_penalty,
+                    mid_table[i-1, j] + open_gap_penalty
                 )
-        
+                upp_table[i, j] = max(
+                    upp_table[i, j-1] + extend_gap_penalty,
+                    mid_table[i, j-1] + open_gap_penalty
+                )
                 
-            elif i == 0 and j > 0:
-                table[i, j], prev[i, j] = scoring_function(indel_char, tj), (i, j-1)
-
-            elif i > 0 and j == 0:
-                table[i, j], prev[i, j] = scoring_function(si, indel_char), (i-1, j)
+                mid_table[i, j], prev[i, j] = max(
+                    (mid_table[i-1, j-1] + scoring_function(si, tj), (i-1, j-1)),
+                    (upp_table[i, j], (i, j-1)),
+                    (low_table[i, j], (i-1, j))
+                    )
+        
+              
+    i, j = len(seq1) - 1, len(seq2) - 1
     
-    i, j = len(seq1)-1, len(seq2)-1
-    
-    final_score = table[i,j]
+    final_score = mid_table[i,j]
 
     align1 = ''
     align2 = ''
@@ -83,7 +101,7 @@ def global_alignment(seq1, seq2, scoring_function, constant_gap = True):
             
         i, j = prev[i, j]
 
-    return align1, align2, final_score, table
+    return align1, align2, final_score, mid_table
 
 
 
@@ -107,30 +125,9 @@ def align_mat_fun(matrix):
 blosum_fun = align_mat_fun(blosum_mat)
 
 print('mine')
-s, t, sc, tab = global_alignment(sequences[0], sequences[1], blosum_fun)
+s, t, sc, tab = global_alignment(sequences[0], sequences[1], blosum_fun, open_gap_penalty=gap_penalty)
 
-
-def gap_function(x, y): 
-    if y == 1:  
-        return -5
-    else : 
-        return 0
-print('pairwise2')
-
-alignment = pairwise2.align.globalcc(sequences[0], sequences[1], blosum_fun, pairwise2.affine_penalty(-5, 0), pairwise2.affine_penalty(-5, 0), gap_char='*', one_alignment_only=True, score_only=True)
-
-for alg in alignment :
-    print(format_alignment(*alg))
-
-#dist = hamming_distance(s, t)
 dist = sc
-import numpy as np
-
-tabl = np.zeros((len(sequences[0])+1, len(sequences[1])+1))
-
-for idx in tab :
-    tabl[idx[0], idx[1]] = tab[idx]
-
 
 with open('res4.txt', 'w') as f:
     f.write(str(int(dist)))
